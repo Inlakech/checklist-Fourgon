@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2f6b3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Checklist fourgon">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Checklist achat fourgon</title>
+<style>
+:root{--g:#2f6b3a;--bg:#f6f5f0;--c:#fff;--t:#1d1d1b;--m:#6b6b66;--ok:#2f6b3a;--ko:#b3261e;--b:#e1dfd6}
+@media(prefers-color-scheme:dark){:root{--bg:#161614;--c:#22221f;--t:#eeede6;--m:#9a9a92;--b:#35352f;--ok:#6fc07c;--ko:#f2766d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--t);font:16px/1.4 system-ui,sans-serif;padding-bottom:90px}
+header{position:sticky;top:0;z-index:5;background:var(--g);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 14px 10px}
+header h1{margin:0;font-size:18px}
+.bar{height:6px;background:rgba(255,255,255,.3);border-radius:3px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:#fff;transition:width .2s}
+#stat{font-size:13px;opacity:.9;margin-top:4px}
+main{padding:12px;max-width:720px;margin:auto}
+section{background:var(--c);border:1px solid var(--b);border-radius:12px;margin-bottom:12px;overflow:hidden}
+section h2{margin:0;padding:12px 14px;font-size:16px;display:flex;justify-content:space-between;cursor:pointer}
+section h2 small{color:var(--m);font-weight:400}
+.items{border-top:1px solid var(--b)}
+.item{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--b);user-select:none}
+.item:last-child{border-bottom:0}
+.box{flex:none;width:30px;height:30px;border:2px solid var(--m);border-radius:8px;display:grid;place-items:center;font-size:18px;font-weight:700}
+.item[data-s="1"] .box{background:var(--ok);border-color:var(--ok);color:#fff}
+.item[data-s="2"] .box{background:var(--ko);border-color:var(--ko);color:#fff}
+.item[data-s="1"] .txt{opacity:.6}
+.item[data-s="2"] .txt{color:var(--ko)}
+.hid .items{display:none}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px}
+.info label{font-size:12px;color:var(--m);display:block}
+.info input,textarea{width:100%;font:inherit;padding:9px;border:1px solid var(--b);border-radius:8px;background:var(--bg);color:var(--t)}
+textarea{min-height:110px;margin:0 0 14px}
+.pad{padding:0 14px}
+.hint{font-size:13px;color:var(--m);padding:0 14px 12px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--c);border-top:1px solid var(--b)}
+nav button{flex:1;padding:13px;font:600 15px inherit;border:0;border-radius:10px;background:var(--g);color:#fff}
+nav button.s{background:var(--b);color:var(--t)}
+#print{display:none}
+@media print{
+ header,nav,.hint,#notes-ui{display:none}
+ body{background:#fff;color:#000;padding:0;font-size:12px}
+ section{border:0;break-inside:avoid;margin:0 0 8px}
+ .hid .items{display:block}
+ .item{padding:3px 0;border:0}
+ .box{width:16px;height:16px;border-radius:3px;font-size:12px;border:1px solid #000;background:#fff!important;color:#000!important}
+ .item[data-s="1"] .txt{opacity:1}
+ .item[data-s="2"] .txt{color:#000;font-weight:700}
+ #print{display:block;padding:0 0 8px}
+ .info input{border:0;border-bottom:1px solid #999;border-radius:0;padding:2px}
+}
+</style>
+</head>
+<body>
+<header>
+ <h1>🚐 Checklist achat fourgon</h1>
+ <div class="bar"><i id="pb"></i></div>
+ <div id="stat"></div>
+</header>
+<main>
+ <section>
+  <div class="info" id="info">
+   <div><label>Véhicule</label><input data-k="veh" placeholder="Marque / modèle"></div>
+   <div><label>Plaque</label><input data-k="plq" placeholder="AB-123-CD" autocapitalize="characters"></div>
+   <div><label>Kilométrage</label><input data-k="km" inputmode="numeric" placeholder="km"></div>
+   <div><label>Prix demandé (€)</label><input data-k="prix" inputmode="numeric"></div>
+  </div>
+  <div class="hint">Touchez une ligne : ☐ → ✔ OK → ✘ problème (à négocier) → ☐. Tout est sauvegardé sur ce téléphone.</div>
+ </section>
+ <div id="app"></div>
+ <section id="notes-ui"><h2>Notes</h2><div class="pad"><textarea id="notes" placeholder="Défauts, réparations à chiffrer, prix proposé…"></textarea></div></section>
+ <div id="print"></div>
+</main>
+<nav>
+ <button class="s" id="reset">Réinitialiser</button>
+ <button id="pdf">Exporter en PDF</button>
+</nav>
+<script>
+const DATA=[
+["1. Avant de se déplacer",[
+"Plaque notée, historique vérifié sur HistoVec (km, CT, sinistres)",
+"Raison de la vente, nombre de propriétaires",
+"Historique d'entretien et usage (pro, chantier, aménagé)",
+"Contrôle technique de moins de 6 mois disponible"]],
+["2. Papiers",[
+"Carte grise au nom du vendeur, sans mention suspecte (vendu, duplicata)",
+"Nom de la carte grise = pièce d'identité",
+"Certificat de situation administrative : aucun gage, aucune opposition",
+"CT de moins de 6 mois : défaillances majeures/critiques lues",
+"Carnet d'entretien et factures (distribution, embrayage, vidanges, pneus)",
+"Si aménagé : mention VASP sur la carte grise",
+"VIN identique : carte grise, pare-brise, châssis"]],
+["3. Inspection visuelle",[
+"Rouille : bas de caisse, passages de roues, planchers, longerons, bas de portes",
+"Carrosserie : teintes, jeux entre panneaux, peinture refaite",
+"Sol et parois : humidité, infiltrations, plancher",
+"Pneus : usure régulière, âge (code DOT), même marque par essieu",
+"Vitrages, joints, éclairage",
+"Dessous : fuites (huile, refroidissement, boîte), silentblocs, amortisseurs"]],
+["4. Mécanique (moteur froid)",[
+"Démarrage à froid : fumée bleue, noire ou blanche ?",
+"Niveaux : huile (pas de mayonnaise), refroidissement, freins",
+"Date du dernier remplacement de la courroie/chaîne",
+"Voyants : allumés au contact puis tous éteints",
+"Ralenti stable, aucun bruit métallique",
+"Lecteur OBD : codes défauts, FAP/EGR supprimé, reprogrammation"]],
+["5. Essai routier (30 min mini)",[
+"Embrayage : point de patinage, pédale dure ou vibrante",
+"Boîte : passages durs, craquements, bruits de roulement",
+"Freinage : pas de tirage ni vibrations, frein à main efficace",
+"Direction : jeu, bruits, tirage d'un côté",
+"Suspensions : claquements sur les bosses",
+"Température : pas de surchauffe",
+"À chaud : turbo (sifflement, perte de puissance), niveau d'huile revérifié",
+"Chauffage, clim, essuie-glaces, portes, serrures, nombre de clés"]],
+["6. Kilométrage",[
+"Compteur cohérent avec CT, HistoVec et usure (pédales, volant, siège)"]],
+["7. Négociation et vente",[
+"Défauts chiffrés et prix négocié",
+"Paiement par virement ou chèque de banque (pas d'espèces sans reçu)",
+"Cerfa 15776 en 2 exemplaires, signé, date et heure",
+"Carte grise : « Vendu le … à … » signé par le vendeur",
+"Demande de nouvelle carte grise dans le mois (ANTS)",
+"Assurance / attestation provisoire avant de rouler"]]
+];
+const KEY="fourgon-checklist-v1";
+let st;try{st=JSON.parse(localStorage.getItem(KEY))||{}}catch(e){st={}}
+st.c=st.c||{};st.i=st.i||{};st.h=st.h||{};st.n=st.n||"";
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(st))}catch(e){}};
+const SYM=["","✔","✘"];
+const app=document.getElementById("app");
+function render(){
+ app.innerHTML="";
+ DATA.forEach((s,si)=>{
+  const sec=document.createElement("section");
+  if(st.h[si])sec.className="hid";
+  const done=s[1].filter((_,ii)=>st.c[si+"-"+ii]).length;
+  sec.innerHTML=`<h2><span>${s[0]}</span><small>${done}/${s[1].length}</small></h2><div class="items"></div>`;
+  sec.querySelector("h2").onclick=()=>{st.h[si]=!st.h[si];save();render()};
+  const box=sec.querySelector(".items");
+  s[1].forEach((t,ii)=>{
+   const k=si+"-"+ii,v=st.c[k]||0;
+   const d=document.createElement("div");
+   d.className="item";d.dataset.s=v;
+   d.innerHTML=`<div class="box">${SYM[v]}</div><div class="txt">${t}</div>`;
+   d.onclick=()=>{st.c[k]=((st.c[k]||0)+1)%3;save();render()};
+   box.appendChild(d);
+  });
+  app.appendChild(sec);
+ });
+ const all=DATA.reduce((a,s)=>a+s[1].length,0);
+ const vals=Object.values(st.c);
+ const ok=vals.filter(v=>v==1).length,ko=vals.filter(v=>v==2).length;
+ document.getElementById("pb").style.width=((ok+ko)/all*100)+"%";
+ document.getElementById("stat").textContent=`${ok+ko}/${all} contrôlés · ${ko} problème${ko>1?"s":""}`;
+}
+document.querySelectorAll("#info input").forEach(i=>{
+ i.value=st.i[i.dataset.k]||"";
+ i.oninput=()=>{st.i[i.dataset.k]=i.value;save()};
+});
+const notes=document.getElementById("notes");
+notes.value=st.n;notes.oninput=()=>{st.n=notes.value;save()};
+document.getElementById("reset").onclick=()=>{
+ if(confirm("Tout effacer (cases, infos, notes) ?")){
+  st={c:{},i:{},h:{},n:""};save();
+  document.querySelectorAll("#info input").forEach(i=>i.value="");notes.value="";render();
+ }
+};
+document.getElementById("pdf").onclick=()=>{
+ const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+ const d=new Date().toLocaleDateString("fr-FR");
+ document.getElementById("print").innerHTML=
+  `<h2>Checklist achat fourgon — ${d}</h2>`+
+  (st.n?`<p><b>Notes :</b><br>${esc(st.n).replace(/\n/g,"<br>")}</p>`:"");
+ window.print();
+};
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+render();
+</script>
+</body>
+</html>
